@@ -1,7 +1,7 @@
 /**
  * react-lazyload
  */
-import React, { Component } from 'react';
+import React, { Component, PureComponent } from 'react';
 import ReactDom from 'react-dom';
 import PropTypes from 'prop-types';
 import { on, off } from './utils/event';
@@ -127,22 +127,30 @@ const checkVisible = function checkVisible(component) {
                   checkNormalVisible(component);
   if (visible) {
     // Avoid extra render if previously is visible
-    if (!component.visible || component.style_hidden) {
+    if (!component.state.visible || component.state.hidden) {
       if (component.props.once) {
         pending.push(component);
       }
 
-      component.visible = true;
-      component.style_hidden = false;
-      component.forceUpdate();
+      //console.log('lazyload 1');
+      component.setState({
+        visible: true,
+        hidden: false,
+      });
     }
-  } else if (!(component.props.once && component.visible)) {
+  } else if (!component.props.once) {
     if (component.props.unmountIfInvisible) {
-      component.visible = false;
-      component.forceUpdate();
+      if(component.visible===true)
+        component.setState({
+          visible: false,
+        });
     } else if(component.props.hiddenIfInvisible) {
-      component.style_hidden = true;
-      component.forceUpdate();
+      if(component.state.hidden===false) {
+        //console.log('lazyload 3');
+        component.setState({
+          hidden: true,
+        });
+      }
     }
   }
 };
@@ -174,12 +182,14 @@ let finalLazyLoadHandler = null;
 
 const isString = string => typeof string === 'string';
 
-class LazyLoad extends Component {
+class LazyLoad extends PureComponent {
   constructor(props) {
     super(props);
 
-    this.visible = false;
-    this.style_hidden = false;
+    this.state={
+      visible: false,
+      hidden: false,
+    };
   }
 
   componentDidMount() {
@@ -244,10 +254,6 @@ class LazyLoad extends Component {
     checkVisible(this);
   }
 
-  shouldComponentUpdate() {
-    return this.visible;
-  }
-
   componentWillUnmount() {
     if (this.props.overflow) {
       const parent = scrollParent(ReactDom.findDOMNode(this));
@@ -274,9 +280,10 @@ class LazyLoad extends Component {
   }
 
   render() {
-    if(this.visible) {
+    //console.log('lazyload render');
+    if(this.state.visible) {
       if(this.props.hiddenIfInvisible)
-        return this.style_hidden ?
+        return this.state.hidden ?
             <div style={{visibility: 'hidden'}}>{this.props.children}</div> :
             <div>{this.props.children}</div>;
       else
