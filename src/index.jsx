@@ -127,17 +127,21 @@ const checkVisible = function checkVisible(component) {
                   checkNormalVisible(component);
   if (visible) {
     // Avoid extra render if previously is visible
-    if (!component.visible) {
+    if (!component.visible || component.style_hidden) {
       if (component.props.once) {
         pending.push(component);
       }
 
       component.visible = true;
+      component.style_hidden = false;
       component.forceUpdate();
     }
   } else if (!(component.props.once && component.visible)) {
-    component.visible = false;
     if (component.props.unmountIfInvisible) {
+      component.visible = false;
+      component.forceUpdate();
+    } else if(component.props.hiddenIfInvisible) {
+      component.style_hidden = true;
       component.forceUpdate();
     }
   }
@@ -175,6 +179,7 @@ class LazyLoad extends Component {
     super(props);
 
     this.visible = false;
+    this.style_hidden = false;
   }
 
   componentDidMount() {
@@ -269,9 +274,16 @@ class LazyLoad extends Component {
   }
 
   render() {
-    return this.visible ?
-           this.props.children :
-             this.props.placeholder ?
+    if(this.visible) {
+      if(this.props.hiddenIfInvisible)
+        return this.style_hidden ?
+            <div style={{visibility: 'hidden'}}>{this.props.children}</div> :
+            <div>{this.props.children}</div>;
+      else
+        return this.props.children;
+    }
+    else
+      return this.props.placeholder ?
                 this.props.placeholder :
                 <div style={{ height: this.props.height }} className="lazyload-placeholder" />;
   }
@@ -289,7 +301,8 @@ LazyLoad.propTypes = {
   debounce: PropTypes.oneOfType([PropTypes.number, PropTypes.bool]),
   placeholder: PropTypes.node,
   scrollContainer: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
-  unmountIfInvisible: PropTypes.bool
+  unmountIfInvisible: PropTypes.bool,
+  hiddenIfInvisible: PropTypes.bool,
 };
 
 LazyLoad.defaultProps = {
@@ -298,7 +311,8 @@ LazyLoad.defaultProps = {
   overflow: false,
   resize: false,
   scroll: true,
-  unmountIfInvisible: false
+  unmountIfInvisible: false,
+  hiddenIfInvisible: false,
 };
 
 const getDisplayName = WrappedComponent => WrappedComponent.displayName || WrappedComponent.name || 'Component';
